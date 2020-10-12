@@ -1,0 +1,7 @@
+name: gene-fusions
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  -arriba >=1.2.0
