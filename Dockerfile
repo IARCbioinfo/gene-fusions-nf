@@ -31,7 +31,6 @@ ENV PATH /opt/conda/envs/nf-gene-fusions/bin:$PATH
 # download and compile arriba v1.2
 #RUN wget -q -O - "https://github.com/suhrig/arriba/releases/download/v1.2.0/arriba_v1.2.0.tar.gz" | tar -xzf - && \
 #cd arriba_v1.2.0 && make all && cp arriba /usr/bin/
-
 #STAR version=2.7.4a
 #samtools 1.9
 #REF=/data/scratch/digenovaa/mesomics/rna-seq/STAR-arriba/reference/GRCh38.primary_assembly.genome.fa
