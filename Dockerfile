@@ -1,6 +1,8 @@
 ################# BASE IMAGE #####################
 FROM continuumio/miniconda3:4.7.12
 
+##site to test docker configuration files
+# https://labs.play-with-docker.com/
 ################## METADATA #######################
 
 LABEL base_image="continuumio/miniconda3"
