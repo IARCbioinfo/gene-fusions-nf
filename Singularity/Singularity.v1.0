@@ -1,4 +1,4 @@
-From:adigenova/nf-gene-fusions
+From:adigenova/nf-gene-fusions:v1.0
 Bootstrap:docker
 
 %labels
