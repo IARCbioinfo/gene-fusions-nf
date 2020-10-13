@@ -21,8 +21,10 @@ MAINTAINER Alex Di Genova <digenova@gmail.com>
 ################## INSTALLATION ######################
 COPY environment.yml /
 RUN apt-get update && apt-get install -y procps && apt-get clean -y
-RUN conda env create -n nf-gene-fusions -f /environment.yml && conda clean -a
-ENV PATH /opt/conda/envs/nf-gene-fusions/bin:$PATH
+RUN conda env create -n gene-fusions -f /environment.yml && conda clean -a
+ENV PATH /opt/conda/envs/gene-fusions/bin:$PATH
+RUN conda activate gene-fusions
+RUN whereis arriba && arriba --version && STAR --version
 
 # install dependencies
 #RUN export DEBIAN_FRONTEND=noninteractive && \

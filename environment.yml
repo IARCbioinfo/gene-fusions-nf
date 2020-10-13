@@ -4,4 +4,4 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  -arriba >=1.2.0
+  - arriba==2.0.0
