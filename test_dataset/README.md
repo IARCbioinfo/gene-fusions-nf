@@ -43,8 +43,10 @@ gcc -g -O2 -Wall -o wgsim wgsim.c -lz -lm
 cd ..
 #we generate 10 samples with upto 10 fusion transcripts,it do not take into account the transcript orientation
 perl generate_chimeric.pl -a gencode.v35.chr3_52287089_52809009.transcripts.fa -b T000
+#we have to rescale the coordinates
+awk -F"\t" 'BEGIN{OFS="\t";}{$4-=52287088; $5-=52287088; print $0}' gencode.v35.chr3_52287089_52809009.protein_coding.gtf > gencode.v35.chr3_52287089_52809009.protein_coding_rescaled.gtf
 #we link the test genome and gtf annotation
-ln -s gencode.v35.chr3_52287089_52809009.protein_coding.gtf genome.gtf
+ln -s gencode.v35.chr3_52287089_52809009.protein_coding_rescaled.gtf genome.gtf
 ln -s GRCh38.chr3_52287089_52809009.fa genome.fa
 ```
 

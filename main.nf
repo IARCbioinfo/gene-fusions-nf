@@ -120,6 +120,8 @@ process build_star_index {
 
     script:
     def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ''
+    //if we are running the test we shold reduce the index size
+    //def genomeSAindexNbases = task.test ? 8:14
     """
     mkdir star-index
     STAR \\
@@ -129,7 +131,7 @@ process build_star_index {
         --sjdbOverhang ${params.read_length - 1} \\
         --genomeDir star-index/ \\
         --genomeFastaFiles ${fasta} \\
-        --genomeSAindexNbases 8\\
+        --genomeSAindexNbases 8 \\
         ${avail_mem}
     """
 }
