@@ -11,24 +11,32 @@ def show_help (){
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run iarc/nf-gene-fusions --reads '*_R{1,2}.fastq.gz'  -profile docker
+    nextflow run iarc/nf-gene-fusions --reads '*_R{1,2}.fastq.gz'  -profile singularity
 
     Mandatory arguments:
       --reads [file]                Path to input data
-      --reads_csv                   file with tabular data for each sample to process [sampleID fwd_path rev_path]
-      --read_svs                    file with tabular data for each sample to process including structural variants (vcf_format) [sampleID fwd_path rev_path sv_path]
-
-      -profile [str]                Configuration profile to use. Can use multiple (comma separated)
-                                    Available: docker, singularity, test
-
     References
-    --fasta [file]                  Path to fasta reference
-    --gtf [file]                    Path to GTF annotation
-    --star_index [file]             Path to STAR-Index reference
+      --fasta [file]                  Path to fasta reference
+      --gtf [file]                    Path to GTF annotation
+      --star_index [file]             Path to STAR-Index reference
+
+    Input alternatives:
+      --reads_csv                   file with tabular data for each sample to process [sampleID fwd_path rev_path]
+      --reads_svs                   file with tabular data for each sample to process including structural variants
+                                    (vcf_format) [sampleID fwd_fullpath rev_fullpath sv_path].
+
+      -profile [str]              Configuration profile to use.
+                                  Available: docker and singularity
+
+      Test dataset:
+
+      The subdirectory test_dataset contains a small simulated dataset to test the whole workflow.
+
+      Test run:
+
+      nextflow run  iarc/nf-gene-fusions --reads 'test_dataset/reads/*.R{1,2}.fastq.gz' --fasta test_dataset/genome.fa --gtf test_dataset/genome.gtf
 
       """.stripIndent()
-
-
 }
 
 // we star coding the pipeline
