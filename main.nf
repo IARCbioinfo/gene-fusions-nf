@@ -221,14 +221,14 @@ def IARC_Header (){
 //useful url: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
 def tool_header (){
         return """
-        F\u001b[31;1m
-        U\u001b[32;1m
-        S\u001b[33;1m
-        I\u001b[0m
-        O\u001b[33;1m
-        N\u001b[31;1m :
-        Gene\u001b[32;1m
-        Fusion\u001b[33;1m
-        Caller\u001b[31;1m
+        F\u001b[31;1m \\
+        U\u001b[32;1m \\
+        S\u001b[33;1m \\
+        I\u001b[0m \\
+        O\u001b[33;1m \\
+        N\u001b[31;1m : \\
+        Gene\u001b[32;1m \\
+        Fusion\u001b[33;1m \\
+        Caller\u001b[31;1m \\
 """
 }
