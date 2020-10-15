@@ -4,6 +4,7 @@
 //help function for the tool
 def show_help (){
   log.info IARC_Header()
+  log.info tool_header()
     log.info"""
 
     Usage:
@@ -149,7 +150,7 @@ process arriba {
         -x /dev/stdin \\
         -a ${fasta} \\
         -g ${gtf} \\
-        -b ${arriba_lib}/blacklist_hg38_GRCh38_2018-11-04.tsv \\
+        -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
         -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
         -T -P ${extra_params}
 
@@ -187,8 +188,8 @@ process arriba_visualization {
         --alignments=Aligned.sortedByCoord.out.bam \\
         --output=${sample}.pdf \\
         --annotation=${gtf} \\
-        --cytobands=${arriba_lib}/cytobands_hg38_GRCh38_2018-02-23.tsv \\
-        --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_2019-07-05.gff3
+        --cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv \\
+        --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3
     """
 }
 
