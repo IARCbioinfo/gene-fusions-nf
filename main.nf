@@ -53,6 +53,8 @@ if (!params.star_index && (!params.fasta && !params.gtf)) exit 1, "Either specif
 ch_fasta = Channel.value(file(params.fasta)).ifEmpty{exit 1, "Fasta file not found: ${params.fasta}"}
 ch_gtf = Channel.value(file(params.gtf)).ifEmpty{exit 1, "GTF annotation file not found: ${params.gtf}"}
 
+//adding arriba lib
+arriba.lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib directory not found!"}
 
 
 
@@ -140,7 +142,7 @@ process arriba {
 
     input:
         set val(sample), file(reads) from read_files_arriba
-        file(reference) from reference.arriba
+        file(arriba_lib) from arriba.lib
         file(star_index) from ch_star_index
         file(fasta) from ch_fasta
         file(gtf) from ch_gtf
@@ -200,7 +202,7 @@ process arriba_sv {
 
     input:
         set val(sample), file(reads), file(vcf) from read_files_arriba_sv
-        file(reference) from reference.arriba
+        file(arriba_lib) from arriba.lib
         file(star_index) from ch_star_index
         file(fasta) from ch_fasta
         file(gtf) from ch_gtf
@@ -256,7 +258,7 @@ process arriba_visualization {
     publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
 
     input:
-        file(reference) from reference.arriba_vis
+        file(arriba_lib) from arriba.lib
         set sample, file(bam), file(fusions) from arriba_visualization
         file(gtf) from ch_gtf
 
