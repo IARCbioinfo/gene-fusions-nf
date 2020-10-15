@@ -53,6 +53,10 @@ if (!params.star_index && (!params.fasta && !params.gtf)) exit 1, "Either specif
 ch_fasta = Channel.value(file(params.fasta)).ifEmpty{exit 1, "Fasta file not found: ${params.fasta}"}
 ch_gtf = Channel.value(file(params.gtf)).ifEmpty{exit 1, "GTF annotation file not found: ${params.gtf}"}
 
+//init arriba values
+arriba = [
+    lib: false,
+]
 //adding arriba lib
 arriba.lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib directory not found!"}
 
@@ -98,7 +102,7 @@ if(params.reads_csv) {
 
 process build_star_index {
     tag "${fasta}-${gtf}"
-    label 'process_medium'
+    //label 'process_medium'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -136,7 +140,7 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
  */
 process arriba {
     tag "${sample}"
-    label 'process_medium'
+    //label 'process_medium'
 
     publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
 
@@ -196,7 +200,7 @@ arriba_visualization = arriba_bam.join(arriba_tsv)
 
 process arriba_sv {
     tag "${sample}"
-    label 'process_medium'
+    //label 'process_medium'
 
     publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
 
