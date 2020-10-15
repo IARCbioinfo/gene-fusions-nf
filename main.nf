@@ -79,14 +79,17 @@ if(params.reads_csv) {
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
                       .set{read_files_arriba}
 //expect a file like "sampleID fwd_path rev_path vcf_file"
-}else if (params.reads_svs){
+}
+/*
+else if (params.reads_svs){
       reads_svs = file(params.reads_svs)
       Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])], file(row[3])]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
                       .set{read_files_arriba_sv}
+}*/
 //expect a regular expresion like '*_{1,2}.fastq.gz'
-} else  {
+ else  {
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
         .set{read_files_arriba}
@@ -196,7 +199,7 @@ arriba_visualization = arriba_bam.join(arriba_tsv)
  * In particular, Arriba requires that the SVTYPE field be present in the INFO column and specify one of the four values BND, DEL, DUP, INV.
  * In addition, for all SVTYPEs other than BND, the END field must be present and specify the second breakpoint of the structural variant.
  * Structural variants with single breakends are silently ignored.
-*/
+
 
 process arriba_sv {
     tag "${sample}"
@@ -249,7 +252,7 @@ process arriba_sv {
 }
 //arriba visualization
 arriba_visualization = arriba_bam.join(arriba_tsv)
-
+*/
 
 
 /*
