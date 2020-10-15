@@ -44,9 +44,14 @@ def show_help (){
 // Show help message
 if (params.help) exit 0, show_help()
 
+
+
+
 //check star index or fasta and GTF
 if (!params.star_index && (!params.fasta && !params.gtf)) exit 1, "Either specify a STAR-INDEX or Fasta and GTF files!"
 
+ch_fasta = Channel.value(file(params.fasta)).ifEmpty{exit 1, "Fasta file not found: ${params.fasta}"}
+ch_gtf = Channel.value(file(params.gtf)).ifEmpty{exit 1, "GTF annotation file not found: ${params.gtf}"}
 
 
 
@@ -66,20 +71,23 @@ if(params.reads_csv) {
       Channel.fromPath(reads_csv).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
-                      .into{read_files_arriba}
+                      .set{read_files_arriba}
 //expect a file like "sampleID fwd_path rev_path vcf_file"
 }else if (params.reads_svs){
       reads_svs = file(params.reads_svs)
       Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])], file(row[3])]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
-                      .into{read_files_arriba_sv}
+                      .set{read_files_arriba_sv}
 //expect a regular expresion like '*_{1,2}.fastq.gz'
 } else  {
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
-        .into{read_files_arriba}
+        .set{read_files_arriba}
 }
+
+
+
 
 
 /*
@@ -299,6 +307,6 @@ def IARC_Header (){
 //useful url: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
 def tool_header (){
         return """
-        F\u001b[31;1mU\u001b[32;1mS\u001b[33;1mI\u001b[0mO\u001b[33;1mN\u001b[31;1m : Gene\u001b[32;1m Fusion\u001b[33;1m Caller\u001b[31;1m (${manifest.version})
+        F\u001b[31;1mU\u001b[32;1mS\u001b[33;1mI\u001b[0mO\u001b[33;1mN\u001b[31;1m : Gene\u001b[32;1m Fusion\u001b[33;1m Caller\u001b[31;1m (${workflow.manifest.version})
         """
 }
