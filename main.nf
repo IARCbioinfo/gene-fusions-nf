@@ -129,6 +129,7 @@ process build_star_index {
         --sjdbOverhang ${params.read_length - 1} \\
         --genomeDir star-index/ \\
         --genomeFastaFiles ${fasta} \\
+        --genomeSAindexNbases 8\\
         ${avail_mem}
     """
 }
