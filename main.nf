@@ -54,21 +54,28 @@ if (!params.star_index && (!params.fasta && !params.gtf)) exit 1, "Either specif
 /*
  * Channel for reads to process
  */
+ /*
+       Channel.from(params.readPaths)
+           .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
+           .ifEmpty{exit 1, "params.readPaths was empty - no input files supplied" }
+           .into{read_files_arriba}
+ */
+//expect a file like "sampleID fwd_path rev_path"
 if(params.reads_csv) {
-      //expect a file like "sampleID fwd_path rev_path"
       reads_csv = file(params.reads_csv)
       Channel.fromPath(reads_csv).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
                       .into{read_files_arriba}
-      /*
-        Channel.from(params.readPaths)
-            .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-            .ifEmpty{exit 1, "params.readPaths was empty - no input files supplied" }
-            .into{read_files_arriba}
-      */
-} else {
-  //expect a regular expresion like '*_{1,2}.fastq.gz'
+//expect a file like "sampleID fwd_path rev_path vcf_file"
+}else if (params.reads_svs){
+      reads_svs = file(params.reads_svs)
+      Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
+                      .map{row -> [ row[0], [file(row[1]), file(row[2])], file(row[3])]}
+                      .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
+                      .into{read_files_arriba_sv}
+//expect a regular expresion like '*_{1,2}.fastq.gz'
+} else  {
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
         .into{read_files_arriba}
@@ -115,7 +122,7 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 
 /*
- * run arriva fusion caller
+ * run arriba fusion
  */
 process arriba {
     tag "${sample}"
@@ -167,6 +174,69 @@ process arriba {
 }
 //arriba visualization
 arriba_visualization = arriba_bam.join(arriba_tsv)
+
+
+/*
+ * run arriba fusion with genomic SVs
+ * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
+ * In particular, Arriba requires that the SVTYPE field be present in the INFO column and specify one of the four values BND, DEL, DUP, INV.
+ * In addition, for all SVTYPEs other than BND, the END field must be present and specify the second breakpoint of the structural variant.
+ * Structural variants with single breakends are silently ignored.
+*/
+
+process arriba_sv {
+    tag "${sample}"
+    label 'process_medium'
+
+    publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
+
+    input:
+        set val(sample), file(reads), file(vcf) from read_files_arriba_sv
+        file(reference) from reference.arriba
+        file(star_index) from ch_star_index
+        file(fasta) from ch_fasta
+        file(gtf) from ch_gtf
+
+    output:
+        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
+        set val(sample), file("${sample}_arriba.bam") optional true into arriba_bam
+        file("*.{tsv,txt}") into arriba_output
+
+
+    script:
+    def extra_params = params.arriba_opt ? params.arriba_opt : ''
+    """
+    STAR \\
+        --runThreadN ${task.cpus} \\
+        --genomeDir ${star_index} \\
+        --genomeLoad NoSharedMemory \\
+        --readFilesIn ${reads} \\
+        --readFilesCommand zcat  \\
+        --outSAMtype BAM Unsorted --outSAMunmapped Within \\
+        --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
+        --chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
+        --chimJunctionOverhangMin 10 --chimScoreMin 1 \\
+        --chimScoreDropMax 30 --chimScoreJunctionNonGTAG 0 \\
+        --chimScoreSeparation 1 --alignSJstitchMismatchNmax 5 -1 5 5 \\
+        --chimSegmentReadGapMax 3 |
+        tee star-arriba.out.bam |
+
+    arriba \\
+        -x /dev/stdin \\
+        -a ${fasta} \\
+        -g ${gtf} \\
+        -d ${vcf} \\
+        -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
+        -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
+        -T -P ${extra_params}
+
+    mv star-arriba.out.bam ${sample}_arriba.bam
+    """
+}
+//arriba visualization
+arriba_visualization = arriba_bam.join(arriba_tsv)
+
+
 
 /*
  * Arriba Visualization
