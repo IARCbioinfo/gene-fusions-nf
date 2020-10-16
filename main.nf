@@ -15,6 +15,7 @@ def show_help (){
 
     Mandatory arguments:
       --reads [file]                Path to input data
+
     References
       --fasta [file]                  Path to fasta reference
       --gtf [file]                    Path to GTF annotation
@@ -79,6 +80,10 @@ if(params.reads_csv) {
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
                       .set{read_files_arriba}
 //expect a file like "sampleID fwd_path rev_path vcf_file"
+
+if(params.reads_csv  =~ /test_dataset/){
+    params.test=true;
+  }
 }
 /*
 else if (params.reads_svs){
@@ -93,6 +98,10 @@ else if (params.reads_svs){
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
         .set{read_files_arriba}
+
+      if(params.reads =~ /test_dataset/){
+            params.test=true;
+        }
 }
 
 
@@ -105,7 +114,7 @@ else if (params.reads_svs){
 
 process build_star_index {
     tag "${fasta}-${gtf}"
-    //label 'process_medium'
+    label 'load_medium'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -119,7 +128,8 @@ process build_star_index {
     when: !(params.star_index)
 
     script:
-    def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ''
+    //def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : '' //${avail_mem}
+    def opt_test = params.test ? "--genomeSAindexNbases 8" : ''; //adjust a variable for working with a smaller reference
     //if we are running the test we shold reduce the index size
     //def genomeSAindexNbases = task.test ? 8:14
     """
@@ -131,8 +141,7 @@ process build_star_index {
         --sjdbOverhang ${params.read_length - 1} \\
         --genomeDir star-index/ \\
         --genomeFastaFiles ${fasta} \\
-        --genomeSAindexNbases 8 \\
-        ${avail_mem}
+        ${opt_test}
     """
 }
 
@@ -146,7 +155,7 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
  */
 process arriba {
     tag "${sample}"
-    //label 'process_medium'
+    label 'process_medium'
 
     publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
 
