@@ -17,6 +17,8 @@ LABEL about.license="GNU-3.0"
 MAINTAINER Alex Di Genova <digenova@gmail.com>
 ################## INSTALLATION ######################
 COPY environment.yml /
+#the next command install the ps command needed by nexflow to collect run metrics
+RUN apt-get update && apt-get install -y procps
 RUN conda env create -n gene-fusions -f /environment.yml && conda clean -a
 # Add conda installation dir to PATH (instead of doing 'conda activate')
 ENV PATH /opt/conda/envs/gene-fusions/bin:$PATH
