@@ -163,7 +163,7 @@ process star_mapping{
       file(star_index) from ch_star_index
   output:
       set val(sample), file("${sample}_STAR.bam") into star_bam //bam
-      set val(sample), file("${sample}_STAR.result.log") into star_log //star log
+      set val(sample), file("${sample}_STAR.{result.log,gene_counts.log}") into star_output //star log *.{tsv,txt}
 
   script:
   """
@@ -180,12 +180,15 @@ process star_mapping{
     	--chimScoreMin 1 --chimScoreDropMax 30 \\
       --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 \\
     	--alignSJstitchMismatchNmax 5 -1 5 5 --chimSegmentReadGapMax 3 \\
+      --quantMode GeneCounts \\
       --outFileNamePrefix ${sample}.
 
       #we rename the defaul star output
       mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
-      #we rescue the star log file
+      #we rescue the mapping stats
       mv ${sample}.Log.final.out ${sample}_STAR.result.log
+      #we rescue the geneCounts
+      mv ${sample}.ReadsPerGene.out.tab ${sample}_STAR.gene_counts.log
   """
 }
 
