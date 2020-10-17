@@ -210,7 +210,7 @@ process arriba {
     tag "${sample}"
     label 'process_medium'
 
-    publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
+    publishDir "${params.outdir}/Arriba/", mode: 'copy'
 
     input:
         set sample, file(bam) from star_bam
@@ -220,10 +220,11 @@ process arriba {
 
     output:
         set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
-        file("*.{tsv,txt}") into arriba_output
+        file("*.{tsv,txt,log}") into arriba_output
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
+    def opt_test = params.test ? "-f blacklist" : ''; //adjust a variable for working with the smaller reference
     """
     arriba \\
         -x ${bam} \\
@@ -231,7 +232,7 @@ process arriba {
         -g ${gtf} \\
         -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
         -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
-        ${extra_params}
+        ${extra_params} ${opt_test} > ${sample}_arriba.log
     """
 }
 //arriba visualization
