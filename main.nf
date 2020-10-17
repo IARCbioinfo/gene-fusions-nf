@@ -163,7 +163,7 @@ process star_mapping{
       file(star_index) from ch_star_index
   output:
       set val(sample), file("${sample}_STAR.bam") into star_bam //bam
-      set val(sample), file("${sample}_STAR.{result.log,gene_counts.log}") into star_output //star log *.{tsv,txt}
+      set val(sample), file("${sample}_STAR.{result.log,gene_counts.log}") optional true into star_output //star log *.{tsv,txt}
 
   script:
   """
@@ -190,12 +190,21 @@ process star_mapping{
       #we rescue the geneCounts
       mv ${sample}.ReadsPerGene.out.tab ${sample}_STAR.gene_counts.log
   """
+  /*
+  #The STAR gene counts coincide with those produced by htseq-count with default parameters.
+  #The file colums are:
+  #column 1: gene ID
+  #column 2: counts for unstranded RNA-seq
+  #column 3: counts for the 1st read strand aligned with RNA (htseq-count option -s yes)
+  #column 4: counts for the 2nd read strand aligned with RNA (htseq-count option -s reverse
+  */
+
 }
 
-/*
 
 /*
  * run arriba fusion
+*/
 
 process arriba {
     tag "${sample}"
@@ -204,49 +213,29 @@ process arriba {
     publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
 
     input:
-        set val(sample), file(reads) from read_files_arriba
+        set sample, file(bam) from star_bam
         file(arriba_lib) from arriba.lib
-        file(star_index) from ch_star_index
         file(fasta) from ch_fasta
         file(gtf) from ch_gtf
 
     output:
         set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
-        set val(sample), file("${sample}_arriba.bam") optional true into arriba_bam
         file("*.{tsv,txt}") into arriba_output
-
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
     """
-    STAR \\
-        --runThreadN ${task.cpus} \\
-        --genomeDir ${star_index} \\
-        --genomeLoad NoSharedMemory \\
-        --readFilesIn ${reads} \\
-        --readFilesCommand zcat  \\
-        --outSAMtype BAM Unsorted --outSAMunmapped Within \\
-        --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
-        --chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
-        --chimJunctionOverhangMin 10 --chimScoreMin 1 \\
-        --chimScoreDropMax 30 --chimScoreJunctionNonGTAG 0 \\
-        --chimScoreSeparation 1 --alignSJstitchMismatchNmax 5 -1 5 5 \\
-        --chimSegmentReadGapMax 3 |
-        tee star-arriba.out.bam |
-
     arriba \\
-        -x /dev/stdin \\
+        -x ${bam} \\
         -a ${fasta} \\
         -g ${gtf} \\
         -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
         -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
-        -T -P ${extra_params}
-
-    mv star-arriba.out.bam ${sample}_arriba.bam
+        ${extra_params}
     """
 }
 //arriba visualization
-arriba_visualization = arriba_bam.join(arriba_tsv)
+//arriba_visualization = arriba_bam.join(arriba_tsv)
 
 
 /*
