@@ -78,7 +78,7 @@ if(params.reads_csv) {
       Channel.fromPath(reads_csv).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
-                      .set{read_files_arriba}
+                      .set{read_files_star}
 //expect a file like "sampleID fwd_path rev_path vcf_file"
 
 if(params.reads_csv  =~ /test_dataset/){
@@ -97,7 +97,7 @@ else if (params.reads_svs){
  else  {
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
-        .set{read_files_arriba}
+        .set{read_files_star}
 
       if(params.reads =~ /test_dataset/){
             params.test=true;
@@ -150,9 +150,45 @@ ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmp
 ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 
+process star{
+  tag "${sample}"
+  label 'process_medium'
+  //we can remove this to don't keep the bam files
+  publishDir "${params.outdir}/star/${sample}", mode: 'copy'
+
+  input:
+      set val(sample), file(reads) from read_files_star
+      file(star_index) from ch_star_index
+  output:
+      set val(sample), file("${sample}_STAR.bam") into star_bam
+
+  script:
+  """
+  STAR \\
+      --runThreadN ${task.cpus} \\
+    	--genomeDir ${star_index} \\
+      --genomeLoad NoSharedMemory \\
+    	--readFilesIn ${reads} \\
+      --readFilesCommand zcat \\
+    	--outSAMtype BAM Unsorted --outSAMunmapped Within \\
+    	--outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
+    	--chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
+      --chimJunctionOverhangMin 10  \\
+    	--chimScoreMin 1 --chimScoreDropMax 30 \\
+      --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 \\
+    	--alignSJstitchMismatchNmax 5 -1 5 5 --chimSegmentReadGapMax 3 \\
+      --outFileNamePrefix ${sample}.
+
+      #we rename the defaul star output
+      mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
+  """
+}
+
+/*
+
 /*
  * run arriba fusion
- */
+
 process arriba {
     tag "${sample}"
     label 'process_medium'
@@ -269,7 +305,7 @@ arriba_visualization = arriba_bam.join(arriba_tsv)
 
 /*
  * Arriba Visualization
- */
+
 process arriba_visualization {
     tag "${sample}"
     //label 'process_medium'
@@ -299,9 +335,7 @@ process arriba_visualization {
         --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3
     """
 }
-
-
-
+*/
 
 
 
