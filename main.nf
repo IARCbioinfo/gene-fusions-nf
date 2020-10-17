@@ -61,7 +61,8 @@ arriba = [
 //adding arriba lib
 arriba.lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib directory not found!"}
 
-
+log.info IARC_Header()
+log.info tool_header()
 
 /*
  * Channel for reads to process
@@ -113,7 +114,7 @@ else if (params.reads_svs){
  */
 
 process build_star_index {
-    tag "${fasta}-${gtf}"
+    tag "star-index"
     label 'load_medium'
 
     publishDir params.outdir, mode: 'copy'
@@ -149,10 +150,10 @@ ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmp
 
 ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
-
-process star{
+//map the rna-seq reads to the genome
+process star_mapping{
   tag "${sample}"
-  label 'process_medium'
+  label 'load_low2'
   //we can remove this to don't keep the bam files
   publishDir "${params.outdir}/star/${sample}", mode: 'copy'
 
