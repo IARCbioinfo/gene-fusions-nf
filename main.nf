@@ -337,32 +337,3 @@ process arriba_visualization {
     """
 }
 */
-
-
-
-
-
-
-//header for the IARC tools
-// the logo was generated using the following page
-// http://patorjk.com/software/taag  (ANSI logo generator)
-def IARC_Header (){
-     return  """
-#################################################################################
-# ██╗ █████╗ ██████╗  ██████╗██████╗ ██╗ ██████╗ ██╗███╗   ██╗███████╗ ██████╗  #
-# ██║██╔══██╗██╔══██╗██╔════╝██╔══██╗██║██╔═══██╗██║████╗  ██║██╔════╝██╔═══██╗ #
-# ██║███████║██████╔╝██║     ██████╔╝██║██║   ██║██║██╔██╗ ██║█████╗  ██║   ██║ #
-# ██║██╔══██║██╔══██╗██║     ██╔══██╗██║██║   ██║██║██║╚██╗██║██╔══╝  ██║   ██║ #
-# ██║██║  ██║██║  ██║╚██████╗██████╔╝██║╚██████╔╝██║██║ ╚████║██║     ╚██████╔╝ #
-# ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═════╝ ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝  #
-# Nextflow pilelines for cancer genomics.########################################
-"""
-}
-
-//this use ANSI colors to make a short tool description
-//useful url: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
-def tool_header (){
-        return """
-        F\u001b[31;1mU\u001b[32;1mS\u001b[33;1mI\u001b[0mO\u001b[33;1mN\u001b[31;1m : Gene\u001b[32;1m Fusion\u001b[33;1m Caller\u001b[31;1m (${workflow.manifest.version})
-        """
-}
