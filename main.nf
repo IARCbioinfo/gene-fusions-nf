@@ -151,6 +151,7 @@ ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmp
 ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 //map the rna-seq reads to the genome
+
 process star_mapping{
   tag "${sample}"
   label 'load_low2'
@@ -161,7 +162,8 @@ process star_mapping{
       set val(sample), file(reads) from read_files_star
       file(star_index) from ch_star_index
   output:
-      set val(sample), file("${sample}_STAR.bam") into star_bam
+      set val(sample), file("${sample}_STAR.bam") into star_bam //bam
+      set val(sample), file("${sample}_STAR.result.log") into star_log //star log
 
   script:
   """
@@ -182,6 +184,8 @@ process star_mapping{
 
       #we rename the defaul star output
       mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
+      #we rescue the star log file
+      mv ${sample}.Log.final.out ${sample}_STAR.result.log
   """
 }
 
