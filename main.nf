@@ -201,7 +201,7 @@ process arriba {
         file(gtf) from ch_gtf
 
     output:
-        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
+        set val(sample), file(bam), file("${sample}_arriba.tsv") optional true into arriba_tsv
         file("*.{tsv,txt,log}") into arriba_output
 
     script:
@@ -221,8 +221,8 @@ process arriba {
 //we merge into a single channel the arriba result + the star mapping
 //plot_arriba = arriba_tsv.join(vcf_files) if
 //arriba_visualization = arriba_bam.join(arriba_tsv)
-arriba_tsv = arriba_tsv.dump(tag:'arriba_summary')
-plot_arriba = arriba_tsv.join(star_bam)
+//arriba_tsv = arriba_tsv.dump(tag:'arriba_summary')
+//plot_arriba = arriba_tsv.join(star_bam)
 
 /*
  * run arriba fusion with genomic SVs
@@ -245,7 +245,7 @@ process arriba_visualization {
 
     input:
         file(arriba_lib) from arriba.lib
-        set sample, file(bam), file(fusions) from plot_arriba
+        set sample, file(bam), file(fusions) from arriba_tsv
         file(gtf) from ch_gtf
 
     output:
