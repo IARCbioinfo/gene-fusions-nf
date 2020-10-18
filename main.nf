@@ -45,9 +45,6 @@ def show_help (){
 // Show help message
 if (params.help) exit 0, show_help()
 
-
-
-
 //check star index or fasta and GTF
 if (!params.star_index && (!params.fasta && !params.gtf)) exit 1, "Either specify a STAR-INDEX or Fasta and GTF files!"
 
@@ -64,15 +61,11 @@ arriba.lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib 
 log.info IARC_Header()
 log.info tool_header()
 
-/*
- * Channel for reads to process
- */
- /*
-       Channel.from(params.readPaths)
-           .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-           .ifEmpty{exit 1, "params.readPaths was empty - no input files supplied" }
-           .into{read_files_arriba}
- */
+
+//to enable test options
+if(params.reads =~ /test_dataset/ || params.reads_csv =~/test_dataset/ || params.reads_svs =~ /test_dataset/){
+       params.test=true;
+  }
 //expect a file like "sampleID fwd_path rev_path"
 if(params.reads_csv) {
       reads_csv = file(params.reads_csv)
@@ -80,32 +73,27 @@ if(params.reads_csv) {
                       .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
                       .set{read_files_star}
-//expect a file like "sampleID fwd_path rev_path vcf_file"
 
-if(params.reads_csv  =~ /test_dataset/){
-    params.test=true;
-  }
-}
-/*
-else if (params.reads_svs){
+
+}else if (params.reads_svs){
+  //expect a file like "sampleID fwd_path rev_path vcf_file"
       reads_svs = file(params.reads_svs)
+      //Channel for star
       Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])], file(row[3])]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
-                      .set{read_files_arriba_sv}
-}*/
-//expect a regular expresion like '*_{1,2}.fastq.gz'
- else  {
+                      .set{read_files_star}
+      //Channel for vcf files
+      Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
+                              .map{row -> [ row[0], file(row[3])]}
+                              .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
+                              .set{vcf_files}
+}else{
+  //expect a regular expresion like '*_{1,2}.fastq.gz'
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
         .set{read_files_star}
-
-      if(params.reads =~ /test_dataset/){
-            params.test=true;
-        }
 }
-
-
 
 
 
@@ -129,10 +117,7 @@ process build_star_index {
     when: !(params.star_index)
 
     script:
-    //def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : '' //${avail_mem}
     def opt_test = params.test ? "--genomeSAindexNbases 8" : ''; //adjust a variable for working with a smaller reference
-    //if we are running the test we shold reduce the index size
-    //def genomeSAindexNbases = task.test ? 8:14
     """
     mkdir star-index
     STAR \\
@@ -147,7 +132,6 @@ process build_star_index {
 }
 
 ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmpty{exit 1, "STAR index not found: ${params.star_index}" } : star_index
-
 ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 //map the rna-seq reads to the genome
@@ -162,33 +146,31 @@ process star_mapping{
       set val(sample), file(reads) from read_files_star
       file(star_index) from ch_star_index
   output:
-      set val(sample), file("${sample}_STAR.bam") into star_bam //bam
-      set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output //star log *.{tsv,txt}
+      //star bam files
+      set val(sample), file("${sample}_STAR.bam") into star_bam
+      //star mapping stats and gene counts *.{tsv,txt}
+      set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output
 
   script:
   """
   STAR \\
-      --runThreadN ${task.cpus} \\
-    	--genomeDir ${star_index} \\
-      --genomeLoad NoSharedMemory \\
-    	--readFilesIn ${reads} \\
-      --readFilesCommand zcat \\
-    	--outSAMtype BAM Unsorted --outSAMunmapped Within \\
-    	--outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
-    	--chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
-      --chimJunctionOverhangMin 10  \\
-    	--chimScoreMin 1 --chimScoreDropMax 30 \\
-      --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 \\
-    	--alignSJstitchMismatchNmax 5 -1 5 5 --chimSegmentReadGapMax 3 \\
-      --quantMode GeneCounts \\
-      --outFileNamePrefix ${sample}.
+   --runThreadN ${task.cpus} \\
+   --genomeDir ${star_index} \\
+   --genomeLoad NoSharedMemory \\
+   --readFilesIn ${reads} \\
+   --readFilesCommand zcat \\
+   --outSAMtype BAM Unsorted --outSAMunmapped Within \\
+   --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
+   --chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
+   --chimJunctionOverhangMin 10 \\
+   --chimScoreMin 1 --chimScoreDropMax 30 \\
+   --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 \\
+   --alignSJstitchMismatchNmax 5 -1 5 5 --chimSegmentReadGapMax 3 \\
+   --quantMode GeneCounts \\
+   --outFileNamePrefix ${sample}.
 
-      #we rename the defaul star output
-      mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
-      #we rescue the mapping stats
-      #mv ${sample}.Log.final.out ${sample}_STAR.result.log
-      #we rescue the geneCounts
-      #mv ${sample}.ReadsPerGene.out.tab ${sample}_STAR.gene_counts.log
+  #we rename the defaul star output
+  mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
   """
   /*
   #The STAR gene counts coincide with those produced by htseq-count with default parameters.
@@ -198,9 +180,8 @@ process star_mapping{
   #column 3: counts for the 1st read strand aligned with RNA (htseq-count option -s yes)
   #column 4: counts for the 2nd read strand aligned with RNA (htseq-count option -s reverse
   */
-
 }
-
+//star_bam = params.arriba_svs ? star_bam.join(vcf_files) : star_bam
 
 /*
  * run arriba fusion
@@ -225,6 +206,7 @@ process arriba {
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
     def opt_test = params.test ? "-f blacklist" : ''; //adjust a variable for working with the smaller reference
+    //def vcf_file = params.arriba_svs ? "-b ${vcf_file}"
     """
     arriba \\
         -x ${bam} \\
@@ -236,9 +218,10 @@ process arriba {
     """
 }
 //we merge into a single channel the arriba result + the star mapping
-plot_arriba = arriba_tsv.join(star_bam)
+//plot_arriba = arriba_tsv.join(vcf_files) if
 //arriba_visualization = arriba_bam.join(arriba_tsv)
 
+plot_arriba=arriba_tsv.join(star_bam)
 
 /*
  * run arriba fusion with genomic SVs
@@ -246,80 +229,28 @@ plot_arriba = arriba_tsv.join(star_bam)
  * In particular, Arriba requires that the SVTYPE field be present in the INFO column and specify one of the four values BND, DEL, DUP, INV.
  * In addition, for all SVTYPEs other than BND, the END field must be present and specify the second breakpoint of the structural variant.
  * Structural variants with single breakends are silently ignored.
-
-
-process arriba_sv {
-    tag "${sample}"
-    //label 'process_medium'
-
-    publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
-
-    input:
-        set val(sample), file(reads), file(vcf) from read_files_arriba_sv
-        file(arriba_lib) from arriba.lib
-        file(star_index) from ch_star_index
-        file(fasta) from ch_fasta
-        file(gtf) from ch_gtf
-
-    output:
-        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
-        set val(sample), file("${sample}_arriba.bam") optional true into arriba_bam
-        file("*.{tsv,txt}") into arriba_output
-
-
-    script:
-    def extra_params = params.arriba_opt ? params.arriba_opt : ''
-    """
-    STAR \\
-        --runThreadN ${task.cpus} \\
-        --genomeDir ${star_index} \\
-        --genomeLoad NoSharedMemory \\
-        --readFilesIn ${reads} \\
-        --readFilesCommand zcat  \\
-        --outSAMtype BAM Unsorted --outSAMunmapped Within \\
-        --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
-        --chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
-        --chimJunctionOverhangMin 10 --chimScoreMin 1 \\
-        --chimScoreDropMax 30 --chimScoreJunctionNonGTAG 0 \\
-        --chimScoreSeparation 1 --alignSJstitchMismatchNmax 5 -1 5 5 \\
-        --chimSegmentReadGapMax 3 |
-        tee star-arriba.out.bam |
-
-    arriba \\
-        -x /dev/stdin \\
-        -a ${fasta} \\
-        -g ${gtf} \\
-        -d ${vcf} \\
-        -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
-        -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
-        -T -P ${extra_params}
-
-    mv star-arriba.out.bam ${sample}_arriba.bam
-    """
-}
-//arriba visualization
-arriba_visualization = arriba_bam.join(arriba_tsv)
 */
 
 
 /*
  * Arriba Visualization
-
+ *
+ */
 process arriba_visualization {
     tag "${sample}"
     //label 'process_medium'
 
-    publishDir "${params.outdir}/Arriba/${sample}", mode: 'copy'
+    publishDir "${params.outdir}/Arriba", mode: 'copy'
 
     input:
         file(arriba_lib) from arriba.lib
-        set sample, file(bam), file(fusions) from arriba_visualization
+        set sample, file(fusions), file(bam) from plot_arriba
         file(gtf) from ch_gtf
 
     output:
         file("${sample}.pdf") optional true into arriba_visualization_output
 
-    when: params.arriba_vis
+    when: params.arriba_plot
 
     script:
     """
@@ -329,12 +260,11 @@ process arriba_visualization {
         --fusions=${fusions} \\
         --alignments=Aligned.sortedByCoord.out.bam \\
         --output=${sample}.pdf \\
-        --annotation=${gtf} \\
-        --cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv \\
-        --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3
+        --annotation=${gtf}
+        #--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv \\
+        #--proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3
     """
 }
-*/
 
 //header for the IARC tools
 // the logo was generated using the following page
