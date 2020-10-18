@@ -67,7 +67,10 @@ log.info tool_header()
 //to enable some particular test options
 if(params.reads =~ /test_dataset/ || params.reads_csv =~/test_dataset/ || params.reads_svs =~ /test_dataset/){
        params.test=true;
+       log.info "guest that is testdataset"
   }
+
+//log.info params.reads_csv
 
 //expect a file with header "label fwd_path rev_path"
 //see file ./test_dataset/sample_fwrev.txt
