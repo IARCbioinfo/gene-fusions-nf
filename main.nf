@@ -201,7 +201,7 @@ process arriba {
         file(gtf) from ch_gtf
 
     output:
-        set val(sample), file(bam), file("${sample}_arriba.tsv") optional true into arriba_tsv
+        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
         file("*.{tsv,txt,log}") into arriba_output
 
     script:
@@ -222,8 +222,9 @@ process arriba {
 //plot_arriba = arriba_tsv.join(vcf_files) if
 //arriba_visualization = arriba_bam.join(arriba_tsv)
 //arriba_tsv = arriba_tsv.dump(tag:'arriba_summary')
-//plot_arriba = arriba_tsv.join(star_bam)
+plot_arriba = arriba_tsv
 
+plot_arriba = plot_arriba.join(star_bam)
 /*
  * run arriba fusion with genomic SVs
  * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
@@ -245,8 +246,8 @@ process arriba_visualization {
 
     input:
         file(arriba_lib) from arriba.lib
-        set sample, file(bam), file(fusions) from arriba_tsv
         file(gtf) from ch_gtf
+        set sample, file(fusions), file(bam) from plot_arriba
 
     output:
         file("${sample}.pdf") optional true into arriba_visualization_output
