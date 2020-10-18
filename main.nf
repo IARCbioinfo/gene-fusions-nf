@@ -27,7 +27,10 @@ def show_help (){
                                     (vcf_format) [sampleID fwd_fullpath rev_fullpath sv_path].
 
       -profile [str]              Configuration profile to use.
-                                  Available: docker and singularity
+                                  Available: singularity
+    Visualization :
+
+    --arriba_plot [bool]          by default plot all the gene fusions detected by arriba. set to false to inactivate.                               
 
       Test dataset:
 
@@ -192,7 +195,7 @@ process arriba {
     tag "${sample}"
     label 'load_low1'
 
-    publishDir "${params.outdir}/Arriba/", mode: 'copy'
+    publishDir "${params.outdir}/arriba/", mode: 'copy'
 
     input:
         set sample, file(bam) from star_bam
@@ -242,7 +245,7 @@ process arriba_visualization {
     tag "${sample}-plot-fusion"
     label 'load_low1'
 
-    publishDir "${params.outdir}/Arriba/plot", mode: 'copy'
+    publishDir "${params.outdir}/arriba/plot", mode: 'copy'
 
     input:
         file(arriba_lib) from arriba.lib
