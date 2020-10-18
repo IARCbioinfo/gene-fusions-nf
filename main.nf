@@ -123,7 +123,8 @@ process build_star_index {
     when: !(params.star_index)
 
     script:
-    def opt_test = params.test ? "--genomeSAindexNbases 8" : ''; //adjust a variable for working with a smaller reference
+     //adjust a variable for working with a smaller reference
+    def opt_test = params.test ? "--genomeSAindexNbases 8" : ''
     """
     mkdir star-index
     STAR \\
@@ -153,7 +154,7 @@ process star_mapping{
       file(star_index) from ch_star_index
   output:
       //star bam files
-      set val(sample), file("${sample}_STAR.bam") into star_bam , arriba_viz
+      set val(sample), file("${sample}_STAR.bam") into star_bam , star_bam_sv ,arriba_viz
       //star mapping stats and gene counts *.{tsv,txt}
       set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output
 
@@ -189,7 +190,7 @@ process star_mapping{
 }
 //star_bam = params.arriba_svs ? star_bam.join(vcf_files) : star_bam
 //we create a channel with bam and sv files
-star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : Channel.empty()
+star_bam_sv = params.reads_svs ? star_bam_sv.join(vcf_files) : Channel.empty()
 
 /*
  * run arriba fusion with genomic SVs
@@ -199,7 +200,7 @@ star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : Channel.empty()
  * Structural variants with single breakends are silently ignored.
 */
 process arriba_sv {
-    tag "${sample}"
+    tag "${sample}-arriba_sv"
     label 'load_low1'
 
     publishDir "${params.outdir}/arriba/", mode: 'copy'
@@ -218,16 +219,14 @@ process arriba_sv {
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
-    //adjust a variable for working with the test dataset
     def opt_test = params.test ? '-f blacklist' : ''
-
+    //  -d ${vcf} \\
     """
     arriba \\
         -x ${bam} \\
         -a ${fasta} \\
         -g ${gtf} \\
         -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
-        -d ${vcf} \\
         -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
         ${extra_params} ${opt_test} > ${sample}_arriba.log
     """
@@ -240,7 +239,7 @@ process arriba_sv {
 */
 
 process arriba {
-    tag "${sample}"
+    tag "${sample}-arriba"
     label 'load_low1'
 
     publishDir "${params.outdir}/arriba/", mode: 'copy'
