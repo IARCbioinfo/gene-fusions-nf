@@ -221,8 +221,8 @@ process arriba {
 //we merge into a single channel the arriba result + the star mapping
 //plot_arriba = arriba_tsv.join(vcf_files) if
 //arriba_visualization = arriba_bam.join(arriba_tsv)
-
-plot_arriba = star_bam.join(arriba_tsv)
+arriba_tsv = arriba_tsv.dump(tag:'arriba_summary')
+plot_arriba = arriba_tsv.join(star_bam)
 
 /*
  * run arriba fusion with genomic SVs
