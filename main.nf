@@ -163,7 +163,7 @@ process star_mapping{
       file(star_index) from ch_star_index
   output:
       set val(sample), file("${sample}_STAR.bam") into star_bam //bam
-      set val(sample), file("${sample}_STAR.{result.log,gene_counts.log}") optional true into star_output //star log *.{tsv,txt}
+      set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output //star log *.{tsv,txt}
 
   script:
   """
@@ -186,9 +186,9 @@ process star_mapping{
       #we rename the defaul star output
       mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
       #we rescue the mapping stats
-      mv ${sample}.Log.final.out ${sample}_STAR.result.log
+      #mv ${sample}.Log.final.out ${sample}_STAR.result.log
       #we rescue the geneCounts
-      mv ${sample}.ReadsPerGene.out.tab ${sample}_STAR.gene_counts.log
+      #mv ${sample}.ReadsPerGene.out.tab ${sample}_STAR.gene_counts.log
   """
   /*
   #The STAR gene counts coincide with those produced by htseq-count with default parameters.
@@ -208,7 +208,7 @@ process star_mapping{
 
 process arriba {
     tag "${sample}"
-    label 'process_medium'
+    label 'load_low1'
 
     publishDir "${params.outdir}/Arriba/", mode: 'copy'
 
@@ -235,7 +235,8 @@ process arriba {
         ${extra_params} ${opt_test} > ${sample}_arriba.log
     """
 }
-//arriba visualization
+//we merge into a single channel the arriba result + the star mapping
+plot_arriba = arriba_tsv.join(star_bam)
 //arriba_visualization = arriba_bam.join(arriba_tsv)
 
 
