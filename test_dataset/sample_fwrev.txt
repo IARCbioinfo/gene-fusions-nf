@@ -1,0 +1,11 @@
+label	fwd	rev
+S1	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T00010.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T00010.R2.fastq.gz
+S2	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0001.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0001.R2.fastq.gz
+S3	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0002.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0002.R2.fastq.gz
+S4	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0003.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0003.R2.fastq.gz
+S5	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0004.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0004.R2.fastq.gz
+S6	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0005.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0005.R2.fastq.gz
+S7	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0006.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0006.R2.fastq.gz
+S8	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0007.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0007.R2.fastq.gz
+S9	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0008.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0008.R2.fastq.gz
+S10	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0009.R1.fastq.gz	/home/digenovaa/tmp/nf-gene-fusions/test_dataset/reads/T0009.R2.fastq.gz
