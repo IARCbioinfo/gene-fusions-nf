@@ -67,7 +67,7 @@ log.info tool_header()
 //to enable some particular test options
 if(params.reads =~ /test_dataset/ || params.reads_csv =~/test_dataset/ || params.reads_svs =~ /test_dataset/){
        params.test=true;
-       log.info "guest that is testdataset"
+       log.info "${worflow.name}(info): The test dataset is being used. Some parameters are modified for a successful execution"
   }
 
 //log.info params.reads_csv
@@ -219,7 +219,7 @@ process arriba_sv {
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
     //adjust a variable for working with the test dataset
-    def opt_test = params.test ? "-f blacklist" : ""
+    def opt_test = params.test ? '-f blacklist' : ''
 
     """
     arriba \\
@@ -260,7 +260,7 @@ process arriba {
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
     //adjust a variable for working with the test dataset
-    def opt_test = params.test ? "-f blacklist" : ""
+    def opt_test = params.test ? '-f blacklist' : ''
 
     """
     arriba \\
