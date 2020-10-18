@@ -148,7 +148,7 @@ process star_mapping{
       file(star_index) from ch_star_index
   output:
       //star bam files
-      set val(sample), file("${sample}_STAR.bam") into {star_bam , arriba_viz}
+      set val(sample), file("${sample}_STAR.bam") into star_bam , arriba_viz
       //star mapping stats and gene counts *.{tsv,txt}
       set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output
 
