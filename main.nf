@@ -255,7 +255,7 @@ process arriba_visualization {
 
     when: params.arriba_plot
      //we do not plot the cytobans and protein domains for the test
-    def opt_test = params.test ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3"; //adjust a variable for working with the smaller reference
+    def opt_test = params.test ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3"
 
     script:
     """
