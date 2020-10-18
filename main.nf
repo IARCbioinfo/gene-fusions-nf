@@ -211,7 +211,7 @@ process arriba {
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
     //adjust a variable for working with the test dataset
-    def opt_test = params.test ? "-f blacklist" : "";
+    def opt_test = params.test ? "-f blacklist" : ""
 
     """
     arriba \\
@@ -254,10 +254,11 @@ process arriba_visualization {
         file("${sample}.pdf") optional true into arriba_visualization_output
 
     when: params.arriba_plot
+    
+    script:
      //we do not plot the cytobans and protein domains for the test
     def opt_test = params.test ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3"
 
-    script:
     """
     samtools sort -@ ${task.cpus} -O bam ${bam} > Aligned.sortedByCoord.out.bam
     samtools index Aligned.sortedByCoord.out.bam
