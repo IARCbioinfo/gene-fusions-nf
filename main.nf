@@ -72,7 +72,7 @@ if(params.reads =~ /test_dataset/ || params.reads_csv =~/test_dataset/ || params
 //expect a file like "sampleID fwd_path rev_path"
 if(params.reads_csv) {
       log.info "entering ${params.reads_csv}"
-
+      log.info file(params.reads_csv)
       //reads_csv = file(params.reads_csv)
       Channel.fromPath(file(params.reads_csv)).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
