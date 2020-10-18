@@ -75,7 +75,7 @@ if(params.reads_csv) {
                       .set{read_files_star}
 
 
-}else if (params.reads_svs){
+}/*else if (params.reads_svs){
   //expect a file like "sampleID fwd_path rev_path vcf_file"
       reads_svs = file(params.reads_svs)
       //Channel for star
@@ -88,7 +88,8 @@ if(params.reads_csv) {
                               .map{row -> [ row[0], file(row[3])]}
                               .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
                               .set{vcf_files}
-}else{
+}*/
+else{
   //expect a regular expresion like '*_{1,2}.fastq.gz'
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
@@ -221,7 +222,7 @@ process arriba {
 //plot_arriba = arriba_tsv.join(vcf_files) if
 //arriba_visualization = arriba_bam.join(arriba_tsv)
 
-plot_arriba=arriba_tsv.join(star_bam)
+plot_arriba = star_bam.join(arriba_tsv)
 
 /*
  * run arriba fusion with genomic SVs
@@ -237,14 +238,14 @@ plot_arriba=arriba_tsv.join(star_bam)
  *
  */
 process arriba_visualization {
-    tag "${sample}"
-    //label 'process_medium'
+    tag "${sample}-plot-fusion"
+    label 'load_low1'
 
-    publishDir "${params.outdir}/Arriba", mode: 'copy'
+    publishDir "${params.outdir}/Arriba/plot", mode: 'copy'
 
     input:
         file(arriba_lib) from arriba.lib
-        set sample, file(fusions), file(bam) from plot_arriba
+        set sample, file(bam), file(fusions) from plot_arriba
         file(gtf) from ch_gtf
 
     output:
