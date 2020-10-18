@@ -186,7 +186,7 @@ process star_mapping{
 }
 //star_bam = params.arriba_svs ? star_bam.join(vcf_files) : star_bam
 //we create a channel with bam and sv files
-star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : ''
+star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : Channel.empty()
 
 /*
  * run arriba fusion with genomic SVs
@@ -208,7 +208,7 @@ process arriba_sv {
         file(gtf) from ch_gtf
 
     output:
-        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv_sv
+        set val(sample), file("${sample}_arriba_sv.tsv") optional true into arriba_tsv_sv
         file("*.{tsv,txt,log}") into arriba_output_sv
     //we use this methods when no SVs are given
     when: params.reads_svs != null
