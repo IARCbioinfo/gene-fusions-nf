@@ -69,13 +69,11 @@ log.info tool_header()
 if(params.reads =~ /test_dataset/ || params.reads_csv =~/test_dataset/ || params.reads_svs =~ /test_dataset/){
        params.test=true;
   }
-//expect a file like "sampleID fwd_path rev_path"
+//expect a file with header "label fwd rev"
+//values                    "s1 $PWD/r1.fastq.gz $PWD/r2.fastq.gz"
 if(params.reads_csv) {
-      log.info "entering ${params.reads_csv}"
-      //log.info file(params.reads_csv)
-      r_csv = file(params.reads_csv)
-      Channel.fromPath(r_csv).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
+      Channel.fromPath(file(params.reads_csv)).splitCsv(header: true, sep: '\t', strip: true)
+                      .map{row -> [ row.label, [file(row.fwd), file(row.rev)]]}
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
                       .set{read_files_star}
 
