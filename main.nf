@@ -60,17 +60,17 @@ arriba = [
 ]
 //adding arriba lib
 arriba.lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib directory not found!"}
-
+//print header and tool name
 log.info IARC_Header()
 log.info tool_header()
 
-
-//to enable test options
+//to enable some particular test options
 if(params.reads =~ /test_dataset/ || params.reads_csv =~/test_dataset/ || params.reads_svs =~ /test_dataset/){
        params.test=true;
   }
-//expect a file with header "label fwd rev"
-//values                    "s1 $PWD/r1.fastq.gz $PWD/r2.fastq.gz"
+
+//expect a file with header "label fwd_path rev_path"
+//see file ./test_dataset/sample_fwrev.txt
 if(params.reads_csv) {
       Channel.fromPath(file(params.reads_csv)).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row.label, [file(row.fwd), file(row.rev)]]}
@@ -78,17 +78,18 @@ if(params.reads_csv) {
                       .set{read_files_star}
 
 }else if (params.reads_svs){
-  //expect a file like "sampleID fwd_path rev_path vcf_file"
+      //expect a file like "label fwd_path rev_path vcf_path"
+      //see file  ./test_dataset/sample_fwrev_vcf.txt
       reads_svs = file(params.reads_svs)
       //Channel for star
       Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
+                      .map{row -> [ row.label, [file(row.fwd), file(row.rev)]]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
                       .set{read_files_star}
 
       //Channel for vcf files
       Channel.fromPath(file(params.reads_svs)).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row[0], [file(row[3])]]}
+                      .map{row -> [ row.label, [file(row.vcf)]]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no vcf files supplied" }
                       .set{vcf_files}
 }else{
@@ -184,12 +185,55 @@ process star_mapping{
   */
 }
 //star_bam = params.arriba_svs ? star_bam.join(vcf_files) : star_bam
+//we create a channel with bam and sv files
+star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : ''
 
+/*
+ * run arriba fusion with genomic SVs
+ * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
+ * In particular, Arriba requires that the SVTYPE field be present in the INFO column and specify one of the four values BND, DEL, DUP, INV.
+ * In addition, for all SVTYPEs other than BND, the END field must be present and specify the second breakpoint of the structural variant.
+ * Structural variants with single breakends are silently ignored.
+*/
+process arriba_sv {
+    tag "${sample}"
+    label 'load_low1'
+
+    publishDir "${params.outdir}/arriba/", mode: 'copy'
+
+    input:
+        set sample, file(bam), file(vcf) from star_bam_sv
+        file(arriba_lib) from arriba.lib
+        file(fasta) from ch_fasta
+        file(gtf) from ch_gtf
+
+    output:
+        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv_sv
+        file("*.{tsv,txt,log}") into arriba_output_sv
+    //we use this methods when no SVs are given
+    when: params.reads_svs != null
+
+    script:
+    def extra_params = params.arriba_opt ? params.arriba_opt : ''
+    //adjust a variable for working with the test dataset
+    def opt_test = params.test ? "-f blacklist" : ""
+
+    """
+    arriba \\
+        -x ${bam} \\
+        -a ${fasta} \\
+        -g ${gtf} \\
+        -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.0.0.tsv.gz \\
+        -d ${vcf} \\
+        -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
+        ${extra_params} ${opt_test} > ${sample}_arriba.log
+    """
+}
 
 
 
 /*
- * run arriba fusion
+ * run arriba fusion without genomic structural variants
 */
 
 process arriba {
@@ -207,6 +251,8 @@ process arriba {
     output:
         set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
         file("*.{tsv,txt,log}") into arriba_output
+    //we use this methods when no SVs are given
+    when: params.reads_svs == null
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
@@ -225,15 +271,7 @@ process arriba {
 }
 
 //we merge into a single channel the arriba result + the star mapping
-plot_arriba = arriba_viz.join(arriba_tsv)
-
-/*
- * run arriba fusion with genomic SVs
- * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
- * In particular, Arriba requires that the SVTYPE field be present in the INFO column and specify one of the four values BND, DEL, DUP, INV.
- * In addition, for all SVTYPEs other than BND, the END field must be present and specify the second breakpoint of the structural variant.
- * Structural variants with single breakends are silently ignored.
-*/
+plot_arriba = params.reads_svs ? arriba_viz.join(arriba_tsv_sv):arriba_viz.join(arriba_tsv)
 
 
 /*
@@ -254,7 +292,7 @@ process arriba_visualization {
         file("${sample}.pdf") optional true into arriba_visualization_output
 
     when: params.arriba_plot
-    
+
     script:
      //we do not plot the cytobans and protein domains for the test
     def opt_test = params.test ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3"
