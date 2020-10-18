@@ -30,7 +30,7 @@ def show_help (){
                                   Available: singularity
     Visualization :
 
-    --arriba_plot [bool]          by default plot all the gene fusions detected by arriba. set to false to inactivate.                               
+    --arriba_plot [bool]          by default plot all the gene fusions detected by arriba. set to false to inactivate.
 
       Test dataset:
 
@@ -77,28 +77,26 @@ if(params.reads_csv) {
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
                       .set{read_files_star}
 
-
-}/*else if (params.reads_svs){
+}else if (params.reads_svs){
   //expect a file like "sampleID fwd_path rev_path vcf_file"
       reads_svs = file(params.reads_svs)
       //Channel for star
       Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row[0], [file(row[1]), file(row[2])], file(row[3])]}
+                      .map{row -> [ row[0], [file(row[1]), file(row[2])]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
                       .set{read_files_star}
+
       //Channel for vcf files
-      Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
-                              .map{row -> [ row[0], file(row[3])]}
-                              .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
-                              .set{vcf_files}
-}*/
-else{
-  //expect a regular expresion like '*_{1,2}.fastq.gz'
+      Channel.fromPath(file(params.reads_svs)).splitCsv(header: true, sep: '\t', strip: true)
+                      .map{row -> [ row[0], [file(row[3])]}
+                      .ifEmpty{exit 1, "params.reads_svs was empty - no vcf files supplied" }
+                      .set{vcf_files}
+}else{
+    //expect a regular expresion like '*_{1,2}.fastq.gz'
     Channel.fromFilePairs(params.reads, size: 2 )
         .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
         .set{read_files_star}
 }
-
 
 
 /*
@@ -187,6 +185,9 @@ process star_mapping{
 }
 //star_bam = params.arriba_svs ? star_bam.join(vcf_files) : star_bam
 
+
+
+
 /*
  * run arriba fusion
 */
@@ -209,8 +210,9 @@ process arriba {
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
-    def opt_test = params.test ? "-f blacklist" : ''; //adjust a variable for working with the smaller reference
-    //def vcf_file = params.arriba_svs ? "-b ${vcf_file}"
+    //adjust a variable for working with the test dataset
+    def opt_test = params.test ? "-f blacklist" : "";
+
     """
     arriba \\
         -x ${bam} \\
@@ -221,13 +223,10 @@ process arriba {
         ${extra_params} ${opt_test} > ${sample}_arriba.log
     """
 }
+
 //we merge into a single channel the arriba result + the star mapping
-//plot_arriba = arriba_tsv.join(vcf_files) if
-//arriba_visualization = arriba_bam.join(arriba_tsv)
-//arriba_tsv = arriba_tsv.dump(tag:'arriba_summary')
 plot_arriba = arriba_viz.join(arriba_tsv)
 
-//plot_arriba = plot_arriba.join(star_bam)
 /*
  * run arriba fusion with genomic SVs
  * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
@@ -238,7 +237,7 @@ plot_arriba = arriba_viz.join(arriba_tsv)
 
 
 /*
- * Arriba Visualization
+ * Arriba plot
  *
  */
 process arriba_visualization {
@@ -251,11 +250,12 @@ process arriba_visualization {
         file(arriba_lib) from arriba.lib
         file(gtf) from ch_gtf
         set sample, file(bam), file(fusions) from plot_arriba
-        //set sample2, file(bam) from star_bam
     output:
         file("${sample}.pdf") optional true into arriba_visualization_output
 
     when: params.arriba_plot
+     //we do not plot the cytobans and protein domains for the test
+    def opt_test = params.test ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3"; //adjust a variable for working with the smaller reference
 
     script:
     """
@@ -265,9 +265,8 @@ process arriba_visualization {
         --fusions=${fusions} \\
         --alignments=Aligned.sortedByCoord.out.bam \\
         --output=${sample}.pdf \\
-        --annotation=${gtf}
-        #--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.0.0.tsv \\
-        #--proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.0.0.gff3
+        --annotation=${gtf} \\
+        ${opt_test}
     """
 }
 
