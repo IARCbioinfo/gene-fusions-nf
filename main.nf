@@ -82,13 +82,13 @@ if(params.reads_csv) {
       reads_svs = file(params.reads_svs)
       //Channel for star
       Channel.fromPath(reads_svs).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row[0], [file(row[1]), file(row[2])]}
+                      .map{row -> [ row[0], [file(row[1]), file(row[2])]]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no input files supplied" }
                       .set{read_files_star}
 
       //Channel for vcf files
       Channel.fromPath(file(params.reads_svs)).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row[0], [file(row[3])]}
+                      .map{row -> [ row[0], [file(row[3])]]}
                       .ifEmpty{exit 1, "params.reads_svs was empty - no vcf files supplied" }
                       .set{vcf_files}
 }else{
