@@ -222,9 +222,9 @@ process arriba {
 //plot_arriba = arriba_tsv.join(vcf_files) if
 //arriba_visualization = arriba_bam.join(arriba_tsv)
 //arriba_tsv = arriba_tsv.dump(tag:'arriba_summary')
-plot_arriba = arriba_tsv
+//plot_arriba = arriba_tsv
 
-plot_arriba = plot_arriba.join(star_bam)
+//plot_arriba = plot_arriba.join(star_bam)
 /*
  * run arriba fusion with genomic SVs
  * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
@@ -247,8 +247,8 @@ process arriba_visualization {
     input:
         file(arriba_lib) from arriba.lib
         file(gtf) from ch_gtf
-        set sample, file(fusions), file(bam) from plot_arriba
-
+        set sample, file(fusions) from arriba_tsv
+        set sample2, file(bam) from star_bam
     output:
         file("${sample}.pdf") optional true into arriba_visualization_output
 
@@ -256,6 +256,7 @@ process arriba_visualization {
 
     script:
     """
+    echo -e "${sample} ${sample2} ${fusions} ${bam}\n"
     samtools sort -@ ${task.cpus} -O bam ${bam} > Aligned.sortedByCoord.out.bam
     samtools index Aligned.sortedByCoord.out.bam
     draw_fusions.R \\
