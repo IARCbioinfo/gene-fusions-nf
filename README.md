@@ -1,2 +1,2 @@
-# nf-gene-fusions
-A nextflow pipeline to call somatic gene fusions
+# nf-rna-fusions
+A nextflow pipeline to call somatic rna fusions
