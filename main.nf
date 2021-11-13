@@ -122,8 +122,8 @@ if(mode == "BAM"){
 
 process build_star_index {
     tag "star-index"
-    //label 'load_medium'
-    label 'load_low1'
+    label 'load_medium'
+    //label 'load_low1'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -167,8 +167,8 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 process star_mapping{
   tag "${sample}"
-  //label 'load_low2'
-  label 'load_low1'
+  label 'load_low2'
+  //label 'load_low1'
   //we can remove this to don't keep the bam files
   publishDir "${params.outdir}/star_mapping", mode: 'copy'
 
