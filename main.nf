@@ -122,8 +122,8 @@ if(mode == "BAM"){
 
 process build_star_index {
     tag "star-index"
-    label 'load_medium'
-    //label 'load_low1'
+    //label 'load_medium'
+    label 'load_low1'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -167,8 +167,8 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 process star_mapping{
   tag "${sample}"
-  label 'load_low2'
-  //label 'load_low1'
+  //label 'load_low2'
+  label 'load_low1'
   //we can remove this to don't keep the bam files
   publishDir "${params.outdir}/star_mapping", mode: 'copy'
 
@@ -361,46 +361,58 @@ process arriba_visualization {
         #file is already sorted
         echo ln -s ${bam} Aligned.sortedByCoord.out.bam
         echo samtools index Aligned.sortedByCoord.out.bam
+        echo draw_fusions.R \\
+            --fusions=${fusions} \\
+            --alignments=Aligned.sortedByCoord.out.bam \\
+            --output=${sample}.pdf \\
+            --annotation=${gtf} \\
+            ${opt_test}
+          touch ${sample}.pdf
+
         """
       }else{
       //bams shold be sorted because were mapped with STAR
       """
       echo samtools sort -@ ${task.cpus} -O bam ${bam} > Aligned.sortedByCoord.out.bam
       echo samtools index Aligned.sortedByCoord.out.bam
+      echo draw_fusions.R \\
+          --fusions=${fusions} \\
+          --alignments=Aligned.sortedByCoord.out.bam \\
+          --output=${sample}.pdf \\
+          --annotation=${gtf} \\
+          ${opt_test}
+        touch ${sample}.pdf
+
       """
     }
-    """
-    echo draw_fusions.R \\
-        --fusions=${fusions} \\
-        --alignments=Aligned.sortedByCoord.out.bam \\
-        --output=${sample}.pdf \\
-        --annotation=${gtf} \\
-        ${opt_test}
-      touch ${sample}.pdf
-    """
+
   }else{
     if(params.bams){
       """
       #file is already sorted
       ln -s ${bam} Aligned.sortedByCoord.out.bam
       samtools index Aligned.sortedByCoord.out.bam
+      draw_fusions.R \\
+          --fusions=${fusions} \\
+          --alignments=Aligned.sortedByCoord.out.bam \\
+          --output=${sample}.pdf \\
+          --annotation=${gtf} \\
+          ${opt_test}
       """
     }else{
     //bams shold be sorted because were mapped with STAR
     """
     samtools sort -@ ${task.cpus} -O bam ${bam} > Aligned.sortedByCoord.out.bam
     samtools index Aligned.sortedByCoord.out.bam
+    draw_fusions.R \\
+        --fusions=${fusions} \\
+        --alignments=Aligned.sortedByCoord.out.bam \\
+        --output=${sample}.pdf \\
+        --annotation=${gtf} \\
+        ${opt_test}
     """
   }
   //we draw the fusions
-  """
-  draw_fusions.R \\
-      --fusions=${fusions} \\
-      --alignments=Aligned.sortedByCoord.out.bam \\
-      --output=${sample}.pdf \\
-      --annotation=${gtf} \\
-      ${opt_test}
-  """
   }
 }
 
