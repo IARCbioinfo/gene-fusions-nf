@@ -122,8 +122,8 @@ if(mode == "BAM"){
 
 process build_star_index {
     tag "star-index"
-    //label 'load_medium'
-    label 'load_low1'
+    label 'load_medium'
+    //label 'load_low1'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -167,8 +167,8 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 process star_mapping{
   tag "${sample}"
-  //label 'load_low2'
-  label 'load_low1'
+  label 'load_low2'
+  //label 'load_low1'
   //we can remove this to don't keep the bam files
   publishDir "${params.outdir}/star_mapping", mode: 'copy', pattern: "${sample}.{Log.final.out,ReadsPerGene.out.tab}"
   //publishDir "$params.outdir/$sampleId/counts", pattern: "*_counts.txt"
@@ -180,7 +180,7 @@ process star_mapping{
       //star bam files
       set val(sample), file("${sample}_STAR.bam") into star_bam , star_bam_sv , arriba_viz
       //star mapping stats and gene counts *.{tsv,txt}
-      set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output
+      set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab,fastq.log}") optional true into star_output
   //when: !(params.bams)
 
   script:
@@ -193,16 +193,17 @@ process star_mapping{
   //BAMs are given as input
   }else if(mode=="BAM"){
   """
-  #we map the reads by using mkfifo
-  mkfifo paired1.fq
-  mkfifo paired2.fq
-  samtools collate -uOn 10 ${reads} tmp_${sample} | samtools fastq -1 paired1.fq -2 paired2.fq -0 /dev/null -s /dev/null &
+  #we map the reads by picking pairs from input BAM
+  samtools collate -un 10 -o paired_${sample}.bam ${reads} tmp_${sample}
+  samtools fastq -1 paired1.fq.gz -2 paired1.fq.gz -0 /dev/null -s /dev/null paired_${sample}.bam > ${sample}.fastq.log
+  rm -f paired_${sample}.bam
 
   STAR \\
    --runThreadN ${task.cpus} \\
    --genomeDir ${star_index} \\
    --genomeLoad NoSharedMemory \\
-   --readFilesIn  paired1.fq paired2.fq\\
+   --readFilesIn  paired1.fq.gz paired1.fq.gz\\
+   --readFilesCommand zcat \\
    --outSAMtype BAM Unsorted --outSAMunmapped Within \\
    --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
    --chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
@@ -215,6 +216,8 @@ process star_mapping{
 
   #we rename the defaul star output
   mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
+  #we delete the paired reads
+  rm -f paired1.fq.gz paired1.fq.gz
   """
   //normal reads are given as input
   }else{
