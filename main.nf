@@ -388,22 +388,6 @@ process arriba_visualization {
      //we do not plot the cytobans and protein domains for the test
     def opt_test = params.debug ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.1.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.1.0.gff3"
     if(params.debug){
-
-      if(params.bams){
-        """
-        #file is already sorted
-        echo ln -s ${bam} Aligned.sortedByCoord.out.bam
-        echo samtools index Aligned.sortedByCoord.out.bam
-        echo draw_fusions.R \\
-            --fusions=${fusions} \\
-            --alignments=Aligned.sortedByCoord.out.bam \\
-            --output=${sample}.pdf \\
-            --annotation=${gtf} \\
-            ${opt_test}
-          touch ${sample}.pdf
-
-        """
-      }else{
       //bams shold be sorted because were mapped with STAR
       """
       echo samtools sort -@ ${task.cpus} -O bam ${bam} > Aligned.sortedByCoord.out.bam
@@ -417,23 +401,7 @@ process arriba_visualization {
         touch ${sample}.pdf
 
       """
-    }
-
   }else{
-    if(params.bams){
-      """
-      #file is already sorted
-      ln -s ${bam} Aligned.sortedByCoord.out.bam
-      samtools index Aligned.sortedByCoord.out.bam
-      draw_fusions.R \\
-          --fusions=${fusions} \\
-          --alignments=Aligned.sortedByCoord.out.bam \\
-          --output=${sample}.pdf \\
-          --annotation=${gtf} \\
-          ${opt_test}
-      """
-    }else{
-    //bams shold be sorted because were mapped with STAR
     """
     samtools sort -@ ${task.cpus} -O bam ${bam} > Aligned.sortedByCoord.out.bam
     samtools index Aligned.sortedByCoord.out.bam
@@ -444,8 +412,6 @@ process arriba_visualization {
         --annotation=${gtf} \\
         ${opt_test}
     """
-  }
-  //we draw the fusions
   }
 }
 
