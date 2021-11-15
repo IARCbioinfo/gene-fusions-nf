@@ -195,14 +195,14 @@ process star_mapping{
   """
   #we map the reads by picking pairs from input BAM
   samtools collate -un 10 -o paired_${sample}.bam ${reads} tmp_${sample}
-  samtools fastq -1 paired1.fq.gz -2 paired1.fq.gz -0 /dev/null -s /dev/null paired_${sample}.bam > ${sample}.fastq.log
+  samtools fastq -1 paired1.fq.gz -2 paired2.fq.gz -0 /dev/null -s /dev/null paired_${sample}.bam > ${sample}.fastq.log
   rm -f paired_${sample}.bam
 
   STAR \\
    --runThreadN ${task.cpus} \\
    --genomeDir ${star_index} \\
    --genomeLoad NoSharedMemory \\
-   --readFilesIn  paired1.fq.gz paired1.fq.gz\\
+   --readFilesIn  paired1.fq.gz paired2.fq.gz\\
    --readFilesCommand zcat \\
    --outSAMtype BAM Unsorted --outSAMunmapped Within \\
    --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
@@ -217,7 +217,7 @@ process star_mapping{
   #we rename the defaul star output
   mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
   #we delete the paired reads
-  rm -f paired1.fq.gz paired1.fq.gz
+  rm -f paired1.fq.gz paired2.fq.gz
   """
   //normal reads are given as input
   }else{
