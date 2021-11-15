@@ -83,10 +83,10 @@ if(params.reads_csv) {
         pre_star_bam2=Channel.fromPath( params.bams+'/*.bam' )
            .map {  path -> [ path.name.replace(".bam",""), path] }
 
-          pre_star_bam2.into{pre_star_bam; pre_star_bam0}
+          pre_star_bam2.into{pre_star_bam; pre_star_bam0; read_files_star}
           //pre_star_bam0.view()
-          params.star_index=true
-          read_files_star=Channel.value("NO_FASTQ")
+          //params.star_index=true
+          //read_files_star=Channel.value("NO_FASTQ")
           mode="BAM"
         }else{
         	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
@@ -108,22 +108,22 @@ if (params.svs){
                       .set{vcf_files}
 }
 
-
+/*
 if(mode == "BAM"){
   pre_star_bam.into{star_bam;star_bam_sv;arriba_viz}
   //star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : Channel.empty()
   star_bam_sv = params.svs ? star_bam_sv.join(vcf_files) : Channel.empty()
 
 }else{
-
+*/
 /*
  * Build STAR index
  */
 
 process build_star_index {
     tag "star-index"
-    label 'load_medium'
-    //label 'load_low1'
+    //label 'load_medium'
+    label 'load_low1'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -134,7 +134,7 @@ process build_star_index {
     output:
         file("star-index") into star_index
 
-    when: !(params.star_index) || !(params.bams)
+    when: !(params.star_index)
 
     script:
      //adjust a variable for working with a smaller reference
@@ -167,10 +167,11 @@ ch_star_index = ch_star_index.dump(tag:'ch_star_index')
 
 process star_mapping{
   tag "${sample}"
-  label 'load_low2'
-  //label 'load_low1'
+  //label 'load_low2'
+  label 'load_low1'
   //we can remove this to don't keep the bam files
-  publishDir "${params.outdir}/star_mapping", mode: 'copy'
+  publishDir "${params.outdir}/star_mapping", mode: 'copy', pattern: "${sample}.{Log.final.out,ReadsPerGene.out.tab}"
+  //publishDir "$params.outdir/$sampleId/counts", pattern: "*_counts.txt"
 
   input:
       set val(sample), file(reads) from read_files_star
@@ -180,13 +181,42 @@ process star_mapping{
       set val(sample), file("${sample}_STAR.bam") into star_bam , star_bam_sv , arriba_viz
       //star mapping stats and gene counts *.{tsv,txt}
       set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab}") optional true into star_output
-  when: !(params.bams)
+  //when: !(params.bams)
 
   script:
   if(params.debug){
     """
     touch ${sample}_STAR.bam
+    touch ${sample}.Log.final.out
+    touch ${sample}.ReadsPerGene.out.tab
     """
+  //BAMs are given as input
+  }else if(mode=="BAM"){
+  """
+  #we map the reads by using mkfifo
+  mkfifo paired1.fq
+  mkfifo paired2.fq
+  samtools collate -uOn 10 ${reads} tmp_${sample} | samtools fastq -1 paired1.fq -2 paired2.fq -0 /dev/null -s /dev/null &
+
+  STAR \\
+   --runThreadN ${task.cpus} \\
+   --genomeDir ${star_index} \\
+   --genomeLoad NoSharedMemory \\
+   --readFilesIn  paired1.fq paired2.fq\\
+   --outSAMtype BAM Unsorted --outSAMunmapped Within \\
+   --outFilterMultimapNmax 1 --outFilterMismatchNmax 3 \\
+   --chimSegmentMin 10 --chimOutType WithinBAM SoftClip \\
+   --chimJunctionOverhangMin 10 \\
+   --chimScoreMin 1 --chimScoreDropMax 30 \\
+   --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 \\
+   --alignSJstitchMismatchNmax 5 -1 5 5 --chimSegmentReadGapMax 3 \\
+   --quantMode GeneCounts \\
+   --outFileNamePrefix ${sample}.
+
+  #we rename the defaul star output
+  mv ${sample}.Aligned.out.bam ${sample}_STAR.bam
+  """
+  //normal reads are given as input
   }else{
   """
   STAR \\
@@ -223,7 +253,7 @@ process star_mapping{
 
 
 star_bam_sv = params.svs ? star_bam_sv.join(vcf_files) : Channel.empty()
-}
+//}
 /*
  * run arriba fusion with genomic SVs
  * In case of the Variant Call Format, the file must comply with the VCF specification for structural variants.
