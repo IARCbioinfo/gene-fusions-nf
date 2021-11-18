@@ -411,6 +411,9 @@ process arriba_visualization {
         --output=${sample}.pdf \\
         --annotation=${gtf} \\
         ${opt_test}
+    #we remove the tmp files
+    rm -f Aligned.sortedByCoord.out.bam
+    rm -f Aligned.sortedByCoord.out.bam.bai
     """
   }
 }
