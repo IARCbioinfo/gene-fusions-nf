@@ -11,7 +11,7 @@ def show_help (){
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run iarc/nf-gene-fusions --reads '*_R{1,2}.fastq.gz'  -profile singularity
+    nextflow run iarcbioinfo/gene-fusions-nf --reads '*_R{1,2}.fastq.gz'  -profile singularity
 
     Mandatory arguments:
       --reads [file]                Path to input data
