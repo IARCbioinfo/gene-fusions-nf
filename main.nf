@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-
 //help function for the tool
 def show_help (){
   log.info IARC_Header()
@@ -43,96 +42,21 @@ def show_help (){
       """.stripIndent()
 }
 
-// we star coding the pipeline
 
-// Show help message
-if (params.help) exit 0, show_help()
-
-//check star index or fasta and GTF
-if (!params.star_index && (!params.ref_fa && !params.ref_gtf)) exit 1, "Either specify a STAR-INDEX or Fasta and GTF files!"
-
-ch_fasta = Channel.value(file(params.ref_fa)).ifEmpty{exit 1, "Fasta file not found: ${params.ref_fa}"}
-ch_gtf = Channel.value(file(params.ref_gtf)).ifEmpty{exit 1, "GTF annotation file not found: ${params.ref_gtf}"}
-
-//init arriba values
-arriba = [
-    lib: false,
-]
-//adding arriba lib
-arriba.lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib directory not found!"}
-//print header and tool name
-log.info IARC_Header()
-log.info tool_header()
-
-
-//log.info params.reads_csv
-mode="reads"
-//expect a file with header "sampleID fwd_path rev_path"
-//see file ./test_dataset/sample_fwrev.txt
-if(params.reads_csv) {
-      Channel.fromPath(file(params.reads_csv)).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row.sampleID, [file(row.fwd), file(row.rev)]]}
-                      .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
-                      .set{read_files_star}
-
-}else if(params.bams){
-    //we process the bam files
-      if (file(params.bams).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
-        	println "BAM files found, proceed with arriba";
-          //we fill the  #star_bam; star_bam_sv; arriba_viz;
-        pre_star_bam2=Channel.fromPath( params.bams+'/*.bam' )
-           .map {  path -> [ path.name.replace(".bam",""), path] }
-
-          pre_star_bam2.into{pre_star_bam; pre_star_bam0; read_files_star}
-          //pre_star_bam0.view()
-          //params.star_index=true
-          //read_files_star=Channel.value("NO_FASTQ")
-          mode="BAM"
-        }else{
-        	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
-        }
-
-}else{
-    //expect a regular expresion like '*_{1,2}.fastq.gz'
-    Channel.fromFilePairs(params.reads, size: 2 )
-        .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
-        .set{read_files_star}
-}
-
-//sv are given as input to include in arriba
-if (params.svs){
-      //Channel for vcf files
-      Channel.fromPath(file(params.svs)).splitCsv(header: true, sep: '\t', strip: true)
-                      .map{row -> [ row.sampleID, [file(row.bedpe)]]}
-                      .ifEmpty{exit 1, "params.reads_svs was empty - no vcf files supplied" }
-                      .set{vcf_files}
-}
-
-/*
-if(mode == "BAM"){
-  pre_star_bam.into{star_bam;star_bam_sv;arriba_viz}
-  //star_bam_sv = params.reads_svs ? star_bam.join(vcf_files) : Channel.empty()
-  star_bam_sv = params.svs ? star_bam_sv.join(vcf_files) : Channel.empty()
-
-}else{
-*/
-/*
- * Build STAR index
- */
+if(params.bams){mode="BAM"}else{mode="reads"}
 
 process build_star_index {
     tag "star-index"
     label 'load_medium'
-    //label 'load_low1'
 
     publishDir params.outdir, mode: 'copy'
 
     input:
-        file(fasta) from ch_fasta
-        file(gtf) from ch_gtf
+        file(fasta) 
+        file(gtf) 
 
     output:
-        file("star-index") into star_index
+        file("star-index") 
 
     when: !(params.star_index)
 
@@ -158,30 +82,22 @@ process build_star_index {
   }
 }
 
-ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmpty{exit 1, "STAR index not found: ${params.star_index}" } : star_index
-ch_star_index = ch_star_index.dump(tag:'ch_star_index')
-
-//map the rna-seq reads to the genome
 
 //we map the reads only if the bams are not mapped
-
 process star_mapping{
   tag "${sample}"
   label 'load_low2'
-  //label 'load_low1'
-  //we can remove this to don't keep the bam files
+  //we can remove this to avoid keeping the bam files
   publishDir "${params.outdir}/star_mapping", mode: 'copy', pattern: "${sample}.{Log.final.out,ReadsPerGene.out.tab}"
-  //publishDir "$params.outdir/$sampleId/counts", pattern: "*_counts.txt"
 
   input:
-      set val(sample), file(reads) from read_files_star
-      file(star_index) from ch_star_index
+      tuple val(sample), file(reads) 
+      file(star_index) 
   output:
       //star bam files
-      set val(sample), file("${sample}_STAR.bam") into star_bam , star_bam_sv , arriba_viz
+      tuple val(sample), file("${sample}_STAR.bam")
       //star mapping stats and gene counts *.{tsv,txt}
-      set val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab,fastq.log}") optional true into star_output
-  //when: !(params.bams)
+      tuple val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab,fastq.log}") optional true
 
   script:
   if(params.debug){
@@ -251,11 +167,8 @@ process star_mapping{
   #column 4: counts for the 2nd read strand aligned with RNA (htseq-count option -s reverse
   */
 }
-//star_bam = params.arriba_svs ? star_bam.join(vcf_files) : star_bam
 //we create a channel with bam and sv files
 
-
-star_bam_sv = params.svs ? star_bam_sv.join(vcf_files) : Channel.empty()
 //}
 /*
  * run arriba fusion with genomic SVs
@@ -271,16 +184,15 @@ process arriba_sv {
     publishDir "${params.outdir}/arriba/", mode: 'copy'
 
     input:
-        set sample, file(bam), file(vcf) from star_bam_sv
-        file(arriba_lib) from arriba.lib
-        file(fasta) from ch_fasta
-        file(gtf) from ch_gtf
+        tuple val(sample), file(vcf), file(bam)
+        //path(arriba_lib)
+        file(fasta)
+        file(gtf)
 
     output:
-        set val(sample), file("${sample}_arriba_sv.tsv") optional true into arriba_tsv_sv
-        file("*.{tsv,txt,log}") into arriba_output_sv
-    //we use this methods when no SVs are given
-    when: params.svs != null
+        tuple val(sample), file("${sample}_arriba_sv.tsv") optional true
+        file("*.{tsv,txt,log}")
+    //we use this methods when SVs are given
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
@@ -291,8 +203,8 @@ process arriba_sv {
           -a ${fasta} \\
           -g ${gtf} \\
           -d ${vcf} \\
-          -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
-          -o ${sample}_arriba_sv.tsv -O ${sample}_discarded_arriba.tsv \\
+          -b ${params.arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
+          -o ${sample}_arriba_sv.tsv -O ${sample}_discarded_arriba_sv.tsv \\
           ${extra_params}
           touch ${sample}_arriba_sv.tsv
       """
@@ -303,8 +215,8 @@ process arriba_sv {
         -a ${fasta} \\
         -g ${gtf} \\
         -d ${vcf} \\
-        -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
-        -o ${sample}_arriba_sv.tsv -O ${sample}_discarded_arriba.tsv \\
+        -b ${params.arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
+        -o ${sample}_arriba_sv.tsv -O ${sample}_discarded_arriba_sv.tsv \\
         ${extra_params}  > ${sample}_arriba.log
     """
   }
@@ -323,16 +235,15 @@ process arriba {
     publishDir "${params.outdir}/arriba/", mode: 'copy'
 
     input:
-        set sample, file(bam) from star_bam
-        file(arriba_lib) from arriba.lib
-        file(fasta) from ch_fasta
-        file(gtf) from ch_gtf
+        tuple val(sample), file(bam) 
+        //path(arriba_lib) 
+        file(fasta) 
+        file(gtf) 
 
     output:
-        set val(sample), file("${sample}_arriba.tsv") optional true into arriba_tsv
-        file("*.{tsv,txt,log}") into arriba_output
+        tuple val(sample), file("${sample}_arriba.tsv") optional true 
+        file("*.{tsv,txt,log}") 
     //we use this methods when no SVs are given
-    when: params.svs == null
 
     script:
     def extra_params = params.arriba_opt ? params.arriba_opt : ''
@@ -343,7 +254,7 @@ process arriba {
         -x ${bam} \\
         -a ${fasta} \\
         -g ${gtf} \\
-        -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
+        -b ${params.arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
         -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
         ${extra_params}
       touch ${sample}_arriba.tsv
@@ -354,15 +265,12 @@ process arriba {
          -x ${bam} \\
          -a ${fasta} \\
          -g ${gtf} \\
-         -b ${arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
+         -b ${params.arriba_lib}/blacklist_hg38_GRCh38_v2.1.0.tsv.gz \\
          -o ${sample}_arriba.tsv -O ${sample}_discarded_arriba.tsv \\
          ${extra_params}  > ${sample}_arriba.log
     """
    }
 }
-
-//we merge into a single channel the arriba result + the star mapping
-plot_arriba = params.svs ? arriba_viz.join(arriba_tsv_sv):arriba_viz.join(arriba_tsv)
 
 
 /*
@@ -376,17 +284,17 @@ process arriba_visualization {
     publishDir "${params.outdir}/arriba/plot", mode: 'copy'
 
     input:
-        file(arriba_lib) from arriba.lib
-        file(gtf) from ch_gtf
-        set sample, file(bam), file(fusions) from plot_arriba
+        //path(arriba_lib)
+        file(gtf)
+        tuple val(sample), file(bam), file(fusions) 
     output:
-        file("${sample}.pdf") optional true into arriba_visualization_output
+        file("${sample}.pdf") optional true
 
     when: params.arriba_plot
 
     script:
      //we do not plot the cytobans and protein domains for the test
-    def opt_test = params.debug ? "" : "--cytobands=${arriba_lib}/cytobands_hg38_GRCh38_v2.1.0.tsv --proteinDomains=${arriba_lib}/protein_domains_hg38_GRCh38_v2.1.0.gff3"
+    def opt_test = params.debug ? "" : "--cytobands=${params.arriba_lib}/cytobands_hg38_GRCh38_v2.1.0.tsv --proteinDomains=${params.arriba_lib}/protein_domains_hg38_GRCh38_v2.1.0.gff3"
     if(params.debug){
       //bams shold be sorted because were mapped with STAR
       """
@@ -417,6 +325,87 @@ process arriba_visualization {
     """
   }
 }
+
+//main workflow
+workflow{
+//display help information
+  if (params.help){ show_help(); exit 0;}
+  //display the header of the tool
+  log.info IARC_Header()
+  log.info tool_header()
+
+//check star index or fasta and GTF
+if (!params.star_index && (!params.ref_fa && !params.ref_gtf)) exit 1, "Either specify a STAR-INDEX or Fasta and GTF files!"
+
+// create input channels
+ch_fasta = Channel.value(file(params.ref_fa)).ifEmpty{exit 1, "Fasta file not found: ${params.ref_fa}"}
+ch_gtf = Channel.value(file(params.ref_gtf)).ifEmpty{exit 1, "GTF annotation file not found: ${params.ref_gtf}"}
+
+//init arriba values
+params.arriba_lib = "/opt/conda/envs/gene-fusions/var/lib/arriba"
+//adding arriba lib
+//arriba_lib = Channel.value(file(params.arriba_lib)).ifEmpty{exit 1, "Arriba lib directory not found!"}
+
+//expect a file with header "sampleID fwd_path rev_path"
+//see file ./test_dataset/sample_fwrev.txt
+if(params.reads_csv) {
+      read_files_star = Channel.fromPath(file(params.reads_csv)).splitCsv(header: true, sep: '\t', strip: true)
+                      .map{row -> [ row.sampleID, [file(row.fwd), file(row.rev)]]}
+                      .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
+
+}else if(params.bams){
+    //we process the bam files
+      if (file(params.bams).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
+        	println "BAM files found, proceed with arriba";
+        read_files_star=Channel.fromPath( params.bams+'/*.bam' )
+           .map {  path -> [ path.name.replace(".bam",""), path] }//.view()
+          mode="BAM"
+        }else{
+        	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
+        }
+
+}else{
+    //expect a regular expresion like '*_{1,2}.fastq.gz'
+    read_files_star = Channel.fromFilePairs(params.reads, size: 2 )
+        .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!" }
+}
+
+//sv are given as input to include in arriba
+if (params.svs){
+      println "SV file provided";
+      //Channel for vcf files
+      vcf_files = Channel.fromPath(file(params.svs)).splitCsv(header: true, sep: '\t', strip: true)
+                      .map{row -> [ row.sampleID, file(row.bedpe)]}
+                      .ifEmpty{exit 1, "params.reads_svs was empty - no vcf files supplied" }
+                      //.view()                    
+}
+
+
+// Build STAR index
+if(mode!="BAM"){
+  build_star_index(ch_fasta,ch_gtf)
+  ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmpty{exit 1, "STAR index not found: ${params.star_index}" } : build_star_index.out
+  ch_star_index = ch_star_index.dump(tag:'ch_star_index')
+  //map the rna-seq reads to the genome
+  star_mapping(read_files_star,ch_star_index)
+  read_files_star = star_mapping.out
+}
+
+//run arriba
+if(params.svs){
+  println "Run arriba in SV mode";
+  star_bam_sv = vcf_files.join(read_files_star).view()
+  arriba_sv(star_bam_sv,ch_fasta,ch_gtf)
+}else{
+  println "Run arriba";
+  arriba(read_files_star,ch_fasta,ch_gtf)
+}
+//we merge into a single channel the arriba result + the star mapping
+plot_arriba = params.svs ? read_files_star.join(arriba_sv.out[0]):read_files_star.join(arriba.out[0])
+
+arriba_visualization(ch_gtf,plot_arriba)
+}
+
 
 //header for the IARC tools
 // the logo was generated using the following page
