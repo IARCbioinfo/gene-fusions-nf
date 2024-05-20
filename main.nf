@@ -52,11 +52,11 @@ process build_star_index {
     publishDir params.outdir, mode: 'copy'
 
     input:
-        file(fasta) 
-        file(gtf) 
+        path(fasta) 
+        path(gtf) 
 
     output:
-        file("star-index") 
+        path("star-index"), emit: index
 
     when: !(params.star_index)
 
@@ -95,7 +95,7 @@ process star_mapping{
       file(star_index) 
   output:
       //star bam files
-      tuple val(sample), file("${sample}_STAR.bam")
+      tuple val(sample), file("${sample}_STAR.bam"), emit: bams
       //star mapping stats and gene counts *.{tsv,txt}
       tuple val(sample), file("${sample}.{Log.final.out,ReadsPerGene.out.tab,fastq.log}") optional true
 
@@ -352,13 +352,14 @@ if(params.reads_csv) {
       read_files_star = Channel.fromPath(file(params.reads_csv)).splitCsv(header: true, sep: '\t', strip: true)
                       .map{row -> [ row.sampleID, [file(row.fwd), file(row.rev)]]}
                       .ifEmpty{exit 1, "params.reads_csv was empty - no input files supplied" }
+      //read_files_star.view()
 
 }else if(params.bams){
     //we process the bam files
-      if (file(params.bams).listFiles().findAll { it.name ==~ /.*bam/ }.size() > 0){
+      if (file(params.bams).listFiles().findAll { it.name ==~ /.*cram/ }.size() > 0){
         	println "BAM files found, proceed with arriba";
-        read_files_star=Channel.fromPath( params.bams+'/*.bam' )
-           .map {  path -> [ path.name.replace(".bam",""), path] }//.view()
+        read_files_star=Channel.fromPath( params.bams+'/*.cram' )
+           .map {  path -> [ path.name.replace(".cram",""), path] }//.view()
           mode="BAM"
         }else{
         	println "ERROR: input folder contains no fastq nor BAM files"; System.exit(0)
@@ -384,13 +385,12 @@ if (params.svs){
 // Build STAR index
 if(mode!="BAM"){
   build_star_index(ch_fasta,ch_gtf)
-  ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmpty{exit 1, "STAR index not found: ${params.star_index}" } : build_star_index.out
-  ch_star_index = ch_star_index.dump(tag:'ch_star_index')
+  ch_star_index = params.star_index ? Channel.value(file(params.star_index)).ifEmpty{exit 1, "STAR index not found: ${params.star_index}" } : build_star_index.out.index
+  //ch_star_index = ch_star_index
   //map the rna-seq reads to the genome
   star_mapping(read_files_star,ch_star_index)
-  read_files_star = star_mapping.out
+  read_files_star = star_mapping.out.bams
 }
-
 //run arriba
 if(params.svs){
   println "Run arriba in SV mode";
@@ -400,6 +400,7 @@ if(params.svs){
   println "Run arriba";
   arriba(read_files_star,ch_fasta,ch_gtf)
 }
+
 //we merge into a single channel the arriba result + the star mapping
 plot_arriba = params.svs ? read_files_star.join(arriba_sv.out[0]):read_files_star.join(arriba.out[0])
 
