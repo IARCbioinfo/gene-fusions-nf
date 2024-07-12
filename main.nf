@@ -86,7 +86,7 @@ process build_star_index {
 //we map the reads only if the bams are not mapped
 process star_mapping{
   tag "${sample}"
-  label 'load_low2'
+  label 'load_high'
   //we can remove this to avoid keeping the bam files
   publishDir "${params.outdir}/star_mapping", mode: 'copy', pattern: "${sample}.{Log.final.out,ReadsPerGene.out.tab}"
 
@@ -236,7 +236,6 @@ process arriba {
 
     input:
         tuple val(sample), file(bam) 
-        //path(arriba_lib) 
         file(fasta) 
         file(gtf) 
 
@@ -388,7 +387,7 @@ if(mode!="BAM"){
   ch_star_index = ch_star_index.dump(tag:'ch_star_index')
   //map the rna-seq reads to the genome
   star_mapping(read_files_star,ch_star_index)
-  read_files_star = star_mapping.out
+  read_files_star = star_mapping.out[0]
 }
 
 //run arriba
@@ -398,7 +397,7 @@ if(params.svs){
   arriba_sv(star_bam_sv,ch_fasta,ch_gtf)
 }else{
   println "Run arriba";
-  arriba(read_files_star,ch_fasta,ch_gtf)
+  arriba(read_files_star, ch_fasta,ch_gtf)
 }
 //we merge into a single channel the arriba result + the star mapping
 plot_arriba = params.svs ? read_files_star.join(arriba_sv.out[0]):read_files_star.join(arriba.out[0])
